@@ -20,8 +20,6 @@ import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.List;
 
 import org.apache.commons.lang3.mutable.Mutable;
@@ -58,7 +56,7 @@ import edu.uci.ics.hyracks.dataflow.common.comm.util.ByteBufferInputStream;
  * Before
  * 
  *   plan__parent
- *   %OPERATOR( $v1 : function_doc1( \@string ) )
+ *   %OPERATOR( $v1 : fn:doc( \@string ) )
  *   plan__child
  *   
  *   Where xquery_function creates an atomic value.
@@ -66,21 +64,23 @@ import edu.uci.ics.hyracks.dataflow.common.comm.util.ByteBufferInputStream;
  * After 
  * 
  *   plan__parent
- *   %OPERATOR( $v1 : function_doc1( \@absolute_file_path ) ) )
+ *   %OPERATOR( $v1 : fn:doc( \@absolute_file_path ) ) )
  *   plan__child
  * </pre>
  * 
  * @author shivanim
  */
 
-public class ConvertDocExpressionToFile implements IAlgebraicRewriteRule {
+public class ReplaceSourceMapInDocExpression implements IAlgebraicRewriteRule {
 
     final ByteBufferInputStream bbis = new ByteBufferInputStream();
     final DataInputStream di = new DataInputStream(bbis);
     final UTF8StringPointable stringp = (UTF8StringPointable) UTF8StringPointable.FACTORY.createPointable();
     final TaggedValuePointable tvp = (TaggedValuePointable) TaggedValuePointable.FACTORY.createPointable();
-    ArrayBackedValueStorage abvs = new ArrayBackedValueStorage();
+    final ArrayBackedValueStorage abvs = new ArrayBackedValueStorage();
     final DataOutput dOut = abvs.getDataOutput();
+    StringBuilder toStr = new StringBuilder();
+    String docArg = null;
 
     @Override
     public boolean rewritePre(Mutable<ILogicalOperator> opRef, IOptimizationContext context) throws AlgebricksException {
@@ -98,7 +98,7 @@ public class ConvertDocExpressionToFile implements IAlgebraicRewriteRule {
                     BuiltinFunctions.FN_DOC_1.getFunctionIdentifier());
             if (docExpression != null) {
                 AbstractFunctionCallExpression absFnCall = (AbstractFunctionCallExpression) docExpression.getValue();
-                if (docExpression != null && ifDocExpressionFound(opRef, absFnCall.getArguments().get(0), context)) {
+                if (updateDocExpression(opRef, absFnCall.getArguments().get(0), context)) {
                     modified = true;
                 }
             }
@@ -106,7 +106,7 @@ public class ConvertDocExpressionToFile implements IAlgebraicRewriteRule {
         return modified;
     }
 
-    protected boolean ifDocExpressionFound(Mutable<ILogicalOperator> opRef, Mutable<ILogicalExpression> funcExpression,
+    protected boolean updateDocExpression(Mutable<ILogicalOperator> opRef, Mutable<ILogicalExpression> funcExpression,
             IOptimizationContext context) {
         VXQueryConstantValue constantValue = null;
         ConstantExpression constantExpression = null;
@@ -136,24 +136,18 @@ public class ConvertDocExpressionToFile implements IAlgebraicRewriteRule {
             return false;
         }
         tvp.set(constantValue.getValue(), 0, constantValue.getValue().length);
-        String collectionName = null;
         tvp.getValue(stringp);
         if (tvp.getTag() != ValueTag.XS_STRING_TAG) {
             return false;
         }
-        try {
-            bbis.setByteBuffer(
-                    ByteBuffer.wrap(Arrays.copyOfRange(stringp.getByteArray(), stringp.getStartOffset(),
-                            stringp.getLength() + stringp.getStartOffset())), 0);
-            collectionName = di.readUTF();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        stringp.toString(toStr);
+        docArg = toStr.toString();
+
         VXQueryMetadataProvider mdp = (VXQueryMetadataProvider) context.getMetadataProvider();
-        if (!mdp.getSourceFileMap().containsKey(collectionName)) {
+        if (!mdp.getSourceFileMap().containsKey(docArg)) {
             return false;
         }
-        File file = mdp.getSourceFileMap().get(collectionName);
+        File file = mdp.getSourceFileMap().get(docArg);
         StringValueBuilder svb = new StringValueBuilder();
         try {
             abvs.reset();
