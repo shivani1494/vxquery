@@ -30,6 +30,7 @@ import org.apache.vxquery.functions.BuiltinFunctions;
 import org.apache.vxquery.functions.BuiltinOperators;
 import org.apache.vxquery.functions.Function;
 import org.apache.vxquery.metadata.VXQueryCollectionDataSource;
+import org.apache.vxquery.types.ElementType;
 import org.apache.vxquery.types.SequenceType;
 
 import edu.uci.ics.hyracks.algebricks.common.exceptions.AlgebricksException;
@@ -78,7 +79,7 @@ public class PushChildIntoDataScanRule extends AbstractUsedVariablesProcessingRu
 
     protected boolean processOperator(Mutable<ILogicalOperator> opRef, IOptimizationContext context)
             throws AlgebricksException {
-        AbstractLogicalOperator op1 = (AbstractLogicalOperator) opRef.getValue();;
+        AbstractLogicalOperator op1 = (AbstractLogicalOperator) opRef.getValue();
         if (op1.getOperatorTag() != LogicalOperatorTag.UNNEST) {
             return false;
         }
@@ -120,10 +121,15 @@ public class PushChildIntoDataScanRule extends AbstractUsedVariablesProcessingRu
         ExpressionToolbox.findAllFunctionExpressions(expression, BuiltinOperators.CHILD.getFunctionIdentifier(), finds);
         for (int i = finds.size(); i > 0; --i) {
             int typeId = ExpressionToolbox.getTypeExpressionTypeArgument(finds.get(i - 1));
-            if (typeId > 0) {
-                ds.addChildSeq(typeId);
-                added = true;
+            SequenceType sType = null;
+            if (typeId > 0 && !dCtx.sequenceTypeMap.isEmpty()) {
+                sType = dCtx.lookupSequenceType(typeId);
+                if (sType.getItemType().equals(ElementType.ANYELEMENT) && typeId > 0) {
+                    ds.addChildSeq(typeId);
+                    added = true;
+                }
             }
+
         }
         return added;
     }

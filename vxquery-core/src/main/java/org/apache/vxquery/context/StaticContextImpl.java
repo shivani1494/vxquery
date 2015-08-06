@@ -56,7 +56,7 @@ public class StaticContextImpl implements StaticContext {
 
     protected final Map<QName, SchemaType> schemaTypeMap;
 
-    protected final Map<SequenceType, Integer> sequenceTypeMap;
+    public final Map<SequenceType, Integer> sequenceTypeMap;
 
     protected final List<SequenceType> sequenceTypeList;
 
