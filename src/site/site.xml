@@ -87,6 +87,9 @@ limitations under the License.
                 name="XML Data and Node Types"
                 href="development_xml_node_details.html" />
             <item
+                name="XMark Documentation"
+                href="development_xmark_documentation.html" />
+            <item
                 name="XML Data Model Example"
                 href="development_xml_document.html" />
             <item
