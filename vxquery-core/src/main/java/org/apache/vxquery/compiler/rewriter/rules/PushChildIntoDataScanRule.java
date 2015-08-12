@@ -22,7 +22,7 @@ import java.util.List;
 import org.apache.commons.lang3.mutable.Mutable;
 import org.apache.vxquery.compiler.rewriter.VXQueryOptimizationContext;
 import org.apache.vxquery.compiler.rewriter.rules.util.ExpressionToolbox;
-import org.apache.vxquery.context.StaticContextImpl;
+import org.apache.vxquery.context.StaticContext;
 import org.apache.vxquery.functions.BuiltinOperators;
 import org.apache.vxquery.metadata.VXQueryCollectionDataSource;
 import org.apache.vxquery.metadata.VXQueryMetadataProvider;
@@ -66,7 +66,7 @@ import edu.uci.ics.hyracks.algebricks.core.algebra.operators.logical.UnnestOpera
  * @author prestonc
  */
 public class PushChildIntoDataScanRule extends AbstractUsedVariablesProcessingRule {
-    StaticContextImpl dCtx = null;
+    StaticContext dCtx = null;
     final int ARG_DATA = 0;
     final int ARG_TYPE = 1;
 
@@ -75,7 +75,7 @@ public class PushChildIntoDataScanRule extends AbstractUsedVariablesProcessingRu
         VXQueryOptimizationContext vxqOptCtx = (VXQueryOptimizationContext) context;
         IMetadataProvider iProvider = (IMetadataProvider) vxqOptCtx.getMetadataProvider();
         VXQueryMetadataProvider vxqProvider = (VXQueryMetadataProvider) iProvider;
-        dCtx = (StaticContextImpl) vxqProvider.getStaticContext();
+        dCtx = vxqProvider.getStaticContext();
         AbstractLogicalOperator op1 = (AbstractLogicalOperator) opRef.getValue();
         if (op1.getOperatorTag() != LogicalOperatorTag.UNNEST) {
             return false;
@@ -119,7 +119,7 @@ public class PushChildIntoDataScanRule extends AbstractUsedVariablesProcessingRu
         for (int i = finds.size(); i > 0; --i) {
             int typeId = ExpressionToolbox.getTypeExpressionTypeArgument(finds.get(i - 1));
             SequenceType sType = null;
-            if (typeId > 0 && !dCtx.sequenceTypeMap.isEmpty()) {
+            if (typeId > 0) {
                 sType = dCtx.lookupSequenceType(typeId);
                 if (sType.getItemType().equals(ElementType.ANYELEMENT) && typeId > 0) {
                     ds.addChildSeq(typeId);
