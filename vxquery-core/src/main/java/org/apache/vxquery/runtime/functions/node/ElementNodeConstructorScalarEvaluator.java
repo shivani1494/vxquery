@@ -16,12 +16,14 @@
  */
 package org.apache.vxquery.runtime.functions.node;
 
+import java.io.DataOutput;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.vxquery.datamodel.accessors.SequencePointable;
 import org.apache.vxquery.datamodel.accessors.TaggedValuePointable;
+import org.apache.vxquery.datamodel.accessors.TypedPointables;
 import org.apache.vxquery.datamodel.accessors.atomic.CodedQNamePointable;
 import org.apache.vxquery.datamodel.accessors.atomic.XSQNamePointable;
 import org.apache.vxquery.datamodel.accessors.nodes.AttributeNodePointable;
@@ -39,10 +41,13 @@ import org.apache.vxquery.datamodel.builders.nodes.TextNodeBuilder;
 import org.apache.vxquery.datamodel.values.ValueTag;
 import org.apache.vxquery.exceptions.ErrorCode;
 import org.apache.vxquery.exceptions.SystemException;
+import org.apache.vxquery.runtime.functions.cast.CastToStringOperation;
+import org.apache.vxquery.runtime.functions.util.FunctionHelper;
 
 import edu.uci.ics.hyracks.algebricks.runtime.base.IScalarEvaluator;
 import edu.uci.ics.hyracks.api.context.IHyracksTaskContext;
 import edu.uci.ics.hyracks.data.std.api.IMutableValueStorage;
+import edu.uci.ics.hyracks.data.std.primitive.LongPointable;
 import edu.uci.ics.hyracks.data.std.primitive.UTF8StringPointable;
 import edu.uci.ics.hyracks.data.std.primitive.VoidPointable;
 import edu.uci.ics.hyracks.data.std.util.ArrayBackedValueStorage;
@@ -70,6 +75,16 @@ public class ElementNodeConstructorScalarEvaluator extends AbstractNodeConstruct
     private final SequencePointable seqp;
 
     private final IMutableValueStorage abvs;
+
+    private final CastToStringOperation castToString = new CastToStringOperation();
+
+    private final TypedPointables tp = new TypedPointables();
+
+    final ArrayBackedValueStorage abvs1 = new ArrayBackedValueStorage();
+
+    final DataOutput dOut = abvs1.getDataOutput();
+
+    public LongPointable longp1 = (LongPointable) LongPointable.FACTORY.createPointable();
 
     public ElementNodeConstructorScalarEvaluator(IHyracksTaskContext ctx, IScalarEvaluator[] args) {
         super(ctx, args);
@@ -183,7 +198,7 @@ public class ElementNodeConstructorScalarEvaluator extends AbstractNodeConstruct
     }
 
     private void copyElement(ElementNodeBuilder enb, DictionaryBuilder db, NodeTreePointable ntp,
-            ElementNodePointable enp) throws IOException {
+            ElementNodePointable enp) throws IOException, SystemException {
         UTF8StringPointable strp = ppool.takeOne(UTF8StringPointable.class);
         SequencePointable seqp = ppool.takeOne(SequencePointable.class);
         AttributeNodePointable anp = ppool.takeOne(AttributeNodePointable.class);
@@ -235,6 +250,14 @@ public class ElementNodeConstructorScalarEvaluator extends AbstractNodeConstruct
                             copyText(tvp, ntp, abvs);
                             tempEnb.addChild(abvs);
                             break;
+                        case ValueTag.XS_INTEGER_TAG:
+                            tvp.getValue(longp1);
+                            FunctionHelper.writeNumberWithPadding(longp1.getLong(), 1, dOut);
+                            abvs.reset();
+                            convertToTextWhennotAString(abvs, abvs1);
+                            tempEnb.addChild(abvs);
+                            break;
+
                         default:
                             abvs.reset();
                             convertToText(tvp, abvs);
@@ -257,7 +280,7 @@ public class ElementNodeConstructorScalarEvaluator extends AbstractNodeConstruct
     }
 
     private void copyDocument(ElementNodeBuilder enb, DictionaryBuilder db, NodeTreePointable ntp,
-            DocumentNodePointable dnp) throws IOException {
+            DocumentNodePointable dnp) throws IOException, SystemException {
         SequencePointable seqp = ppool.takeOne(SequencePointable.class);
         AttributeNodePointable anp = ppool.takeOne(AttributeNodePointable.class);
         TaggedValuePointable tvp = ppool.takeOne(TaggedValuePointable.class);
@@ -434,5 +457,11 @@ public class ElementNodeConstructorScalarEvaluator extends AbstractNodeConstruct
         tnb.setValue(vp);
 
         ppool.giveBack(vp);
+    }
+
+    private void convertToTextWhennotAString(IMutableValueStorage mvs, ArrayBackedValueStorage ab) throws IOException {
+        TextNodeBuilder tnb = new TextNodeBuilder();
+        tnb.reset(mvs);
+        tnb.addChild(ab.getByteArray());
     }
 }

@@ -1023,7 +1023,8 @@ public class XMLQueryTranslator {
                         LogicalVariable forLVar = newLogicalVariable();
                         LogicalVariable posLVar = fvdNode.getPosVar() != null ? newLogicalVariable() : null;
                         UnnestOperator unnest = new UnnestOperator(forLVar,
-                                mutable(ufce(BuiltinOperators.ITERATE, seq)), posLVar, BuiltinTypeRegistry.XS_INTEGER,
+                                mutable(ufce(BuiltinOperators.ITERATE, seq)), posLVar, SequenceType.create(
+                                        BuiltinTypeRegistry.XS_INTEGER, Quantifier.QUANT_ONE),
                                 new VXQueryPositionWriter());
                         SequenceType forVarType = SequenceType.create(AnyItemType.INSTANCE, Quantifier.QUANT_ONE);
                         if (fvdNode.getType() != null) {
@@ -1567,7 +1568,8 @@ public class XMLQueryTranslator {
         LogicalVariable forLVar = newLogicalVariable();
         LogicalVariable posLVar = newLogicalVariable();
         UnnestOperator unnest = new UnnestOperator(forLVar, mutable(ufce(BuiltinOperators.ITERATE, vre(seqLVar))),
-                posLVar, BuiltinTypeRegistry.XS_INTEGER, new VXQueryPositionWriter());
+                posLVar, SequenceType.create(BuiltinTypeRegistry.XS_INTEGER, Quantifier.QUANT_ONE),
+                new VXQueryPositionWriter());
         SequenceType forVarType = SequenceType.create(AnyItemType.INSTANCE, Quantifier.QUANT_ONE);
         XQueryVariable forVar = new XQueryVariable(XMLQueryCompilerConstants.DOT_VAR_NAME, forVarType, forLVar);
         tCtx.varScope.registerVariable(forVar);

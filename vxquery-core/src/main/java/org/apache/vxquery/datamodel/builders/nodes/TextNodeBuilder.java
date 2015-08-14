@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import org.apache.vxquery.datamodel.values.ValueTag;
 
+import edu.uci.ics.hyracks.data.std.api.IDataOutputProvider;
 import edu.uci.ics.hyracks.data.std.api.IMutableValueStorage;
 import edu.uci.ics.hyracks.data.std.api.IValueReference;
 
@@ -43,5 +44,9 @@ public class TextNodeBuilder extends AbstractNodeBuilder {
 
     public void setValue(IValueReference value) throws IOException {
         out.write(value.getByteArray(), value.getStartOffset(), value.getLength());
+    }
+
+    public void addChild(byte[] bs) throws IOException {
+        out.write(bs);
     }
 }
